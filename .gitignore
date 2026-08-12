@@ -1,0 +1,175 @@
+# ==========================================
+# Python
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env/
+
+
+# ==========================================
+# Environment Variables / Secrets
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+*.key
+*.pem
+*.secret
+secrets/
+credentials/
+
+
+# ==========================================
+# Jupyter Notebook
+# ==========================================
+
+.ipynb_checkpoints/
+
+
+# ==========================================
+# Data - Local / Sensitive / Generated Data
+# ==========================================
+
+# Raw research papers
+data/papers/
+
+# Processed datasets
+data/processed/
+
+# Temporary data
+data/tmp/
+data/temp/
+
+# Local datasets
+*.csv
+*.xlsx
+*.xls
+*.parquet
+
+# JSON generated locally
+data/**/*.json
+
+
+# ==========================================
+# Vector Database / Embeddings
+# ==========================================
+
+vector_db/storage/
+vector_db/data/
+qdrant_storage/
+
+*.faiss
+*.index
+
+
+# ==========================================
+# Machine Learning Models
+# ==========================================
+
+models/
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.onnx
+
+
+# ==========================================
+# Logs
+# ==========================================
+
+*.log
+logs/
+
+
+# ==========================================
+# Temporary / Cache Files
+# ==========================================
+
+.tmp/
+temp/
+tmp/
+.cache/
+
+*.tmp
+*.bak
+*.swp
+
+
+# ==========================================
+# Generated Reports / Outputs
+# ==========================================
+
+outputs/
+reports/
+generated_reports/
+
+*.pdf
+*.docx
+
+
+# ==========================================
+# OS Files
+# ==========================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+
+# ==========================================
+# IDE / Editors
+# ==========================================
+
+.vscode/
+.idea/
+
+*.code-workspace
+
+
+# ==========================================
+# Testing / Coverage
+# ==========================================
+
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+
+# ==========================================
+# Build Files
+# ==========================================
+
+build/
+dist/
+*.egg-info/
+
+
+# ==========================================
+# Docker
+# ==========================================
+
+docker-compose.override.yml
+
+
+# ==========================================
+# Local Development
+# ==========================================
+
+*.local
