@@ -37,3 +37,5 @@ for paper in cleaned_papers:
     print('Year:', paper['year'])
     print('DOI:', paper['doi'])
     print("Citations:", paper['cited_by_count'])
+    print("Open Access:", paper["is_oa"])
+    print("PDF URL:", paper["pdf_url"])

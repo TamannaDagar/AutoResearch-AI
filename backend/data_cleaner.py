@@ -65,12 +65,14 @@ def clean_papers(input_file, output_file):
                 "year": year,
                 "doi": doi,
                 "cited_by_count": paper.get("cited_by_count", 0),
-                "openalex_id": paper.get("openalex_id")
+                "openalex_id": paper.get("openalex_id"),
+                "is_oa": paper.get("is_oa", False),
+                "pdf_url": paper.get("pdf_url")
 
 
             }
 
-        cleaned_papers.append(cleaned_paper)
+            cleaned_papers.append(cleaned_paper)
 
         # save  cleaned data
         with open(output_file, "w", encoding='utf-8') as file:
