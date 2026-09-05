@@ -1,8 +1,10 @@
 import requests
 
+# create function
 def search_papers(topic, per_page=10):
-    url= " https://api.openalex.org/works"
+    url= "https://api.openalex.org/works"
 
+# parametrs that will be show - topic and no. of page
     params= {
         "search": topic,
         "per_page": per_page
