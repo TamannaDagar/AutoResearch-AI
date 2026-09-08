@@ -43,6 +43,9 @@ credentials/
 # Raw research papers
 data/papers/
 
+# Qdrant also
+data/qdrant/
+
 # Processed datasets
 data/processed/
 
@@ -117,6 +120,7 @@ generated_reports/
 
 *.pdf
 *.docx
+*.yml
 
 
 # ==========================================

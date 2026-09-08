@@ -15,7 +15,10 @@ def load_chunks(input_file):
 
 def create_vector_store(chunks, embeddings):
 
-    client = QdrantClient(path="data/qdrant")
+    #client = QdrantClient(path="data/qdrant") for storing in the sqlite
+    client= QdrantClient(
+        url= 'http://localhost:6333'
+    )
 
     vector_size = len(embeddings[0])
 

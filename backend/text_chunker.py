@@ -137,6 +137,7 @@ def split_into_sections(text):
 
 def create_chunks(
     sections,
+    paper_metadata,
     max_words=400,
     overlap_words=80
 ):
@@ -169,13 +170,16 @@ def create_chunks(
             chunk_text = " ".join(chunk_words)
 
             chunks.append({
-                "chunk_id": len(chunks),
-                "chunk_index": len(chunks),
-                "section": section_name,
-                "word_count": len(chunk_words),
-                "text": chunk_text
-            })
-
+        "paper_id": paper_metadata["openalex_id"],
+         "title": paper_metadata["title"],
+        "year": paper_metadata["year"],
+        "doi": paper_metadata["doi"],
+        "chunk_id": len(chunks),
+        "chunk_index": len(chunks),
+        "section": section_name,
+        "word_count": len(chunk_words),
+        "text": chunk_text
+        })
             # Stop if this is the final chunk.
             if end >= len(words):
                 break
