@@ -43,9 +43,15 @@ def create_vector_store(chunks, embeddings):
                 id=index,
                 vector=embedding.tolist(),
                 payload={
-                    "chunk_id": chunk["chunk_id"],
-                    "text": chunk["text"]
-                }
+                "paper_id": chunk["paper_id"],
+                "title": chunk["title"],
+                "year": chunk["year"],
+                "doi": chunk["doi"],
+                "chunk_id": chunk["chunk_id"],
+                "section": chunk["section"],
+                "word_count": chunk["word_count"],
+                "text": chunk["text"]
+            }
             )
         )
 

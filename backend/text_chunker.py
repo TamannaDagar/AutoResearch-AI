@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-import re
 
 
 # --------------------------------------------------
@@ -23,6 +22,13 @@ OUTPUT_FILE = (
     / "papers"
     / "chunks"
     / "test_paper_chunks.json"
+)
+
+METADATA_FILE = (
+    BASE_DIR
+    / "data"
+    / "papers"
+    / "cleaned_papers.json"
 )
 
 
@@ -145,6 +151,9 @@ def create_chunks(
     Create chunks within each section.
 
     Chunks do not cross section boundaries.
+
+    Each chunk also contains metadata
+    identifying the research paper.
     """
 
     chunks = []
@@ -170,16 +179,22 @@ def create_chunks(
             chunk_text = " ".join(chunk_words)
 
             chunks.append({
-        "paper_id": paper_metadata["openalex_id"],
-         "title": paper_metadata["title"],
-        "year": paper_metadata["year"],
-        "doi": paper_metadata["doi"],
-        "chunk_id": len(chunks),
-        "chunk_index": len(chunks),
-        "section": section_name,
-        "word_count": len(chunk_words),
-        "text": chunk_text
-        })
+                # Paper metadata
+                "paper_id": paper_metadata["openalex_id"],
+                "title": paper_metadata["title"],
+                "year": paper_metadata["year"],
+                "doi": paper_metadata["doi"],
+
+                # Chunk metadata
+                "chunk_id": len(chunks),
+                "chunk_index": len(chunks),
+                "section": section_name,
+                "word_count": len(chunk_words),
+
+                # Actual chunk text
+                "text": chunk_text
+            })
+
             # Stop if this is the final chunk.
             if end >= len(words):
                 break
@@ -225,7 +240,50 @@ def save_chunks(chunks, output_file):
 
 if __name__ == "__main__":
 
-    # Read cleaned text.
+    # ----------------------------------------------
+    # Step 1: Read paper metadata
+    # ----------------------------------------------
+
+    with open(
+        METADATA_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        papers = json.load(file)
+
+    # For the current test paper, find its metadata.
+    paper_metadata = next(
+        paper
+        for paper in papers
+        if paper["title"]
+        == "Towards social generative AI for education: theory, practices and ethics"
+    )
+
+    print(
+        "\nPaper:",
+        paper_metadata["title"]
+    )
+
+    print(
+        "Year:",
+        paper_metadata["year"]
+    )
+
+    print(
+        "DOI:",
+        paper_metadata["doi"]
+    )
+
+    print(
+        "OpenAlex ID:",
+        paper_metadata["openalex_id"]
+    )
+
+    # ----------------------------------------------
+    # Step 2: Read cleaned text
+    # ----------------------------------------------
+
     with open(
         INPUT_FILE,
         "r",
@@ -235,12 +293,12 @@ if __name__ == "__main__":
         text = file.read()
 
     print(
-        "Total words:",
+        "\nTotal words:",
         len(text.split())
     )
 
     # ----------------------------------------------
-    # Step 1: Detect sections
+    # Step 3: Detect sections
     # ----------------------------------------------
 
     sections = split_into_sections(text)
@@ -253,17 +311,19 @@ if __name__ == "__main__":
     print("\nDetected sections:")
 
     for section in sections:
+
         print(
             f"- {section['section']}: "
             f"{len(section['text'].split())} words"
         )
 
     # ----------------------------------------------
-    # Step 2: Create chunks
+    # Step 4: Create chunks
     # ----------------------------------------------
 
     chunks = create_chunks(
         sections,
+        paper_metadata,
         max_words=400,
         overlap_words=80
     )
@@ -274,7 +334,7 @@ if __name__ == "__main__":
     )
 
     # ----------------------------------------------
-    # Step 3: Save chunks
+    # Step 5: Save chunks
     # ----------------------------------------------
 
     save_chunks(
@@ -283,13 +343,33 @@ if __name__ == "__main__":
     )
 
     # ----------------------------------------------
-    # Step 4: Show first chunk
+    # Step 6: Show first chunk
     # ----------------------------------------------
 
     if chunks:
 
         print(
             "\n===== FIRST CHUNK ====="
+        )
+
+        print(
+            "Paper ID:",
+            chunks[0]["paper_id"]
+        )
+
+        print(
+            "Title:",
+            chunks[0]["title"]
+        )
+
+        print(
+            "Year:",
+            chunks[0]["year"]
+        )
+
+        print(
+            "DOI:",
+            chunks[0]["doi"]
         )
 
         print(
