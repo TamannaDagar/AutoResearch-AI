@@ -1,0 +1,143 @@
+Prompt- for chatgpt
+
+I am working on the frontend of a B.Tech project called AutoResearch AI.
+
+The project is an AI-powered research-paper analysis system. The backend is being developed separately by my teammate. The project workflow is:
+
+Research Topic → Academic Paper Search → Paper Cleaning → Full-text/PDF Retrieval → PDF Text Extraction → Text Cleaning → Chunking → Embeddings → Qdrant Vector Database → Semantic Search → AI Research Agents → Research Analysis → Trends → Research Gaps → Evidence Verification → Research Synthesis → Literature Review → Dashboard/Report.
+
+The frontend technology should be Streamlit, with Plotly for interactive visualizations.
+
+Build the frontend independently using mock/sample data initially. Do NOT connect to the backend yet and do NOT change backend files.
+
+Create this structure:
+
+frontend/
+├── app.py
+├── components/
+│   ├── sidebar.py
+│   ├── paper_card.py
+│   ├── evidence_card.py
+│   └── charts.py
+├── pages/
+│   ├── papers.py
+│   ├── analysis.py
+│   ├── trends.py
+│   ├── gaps.py
+│   ├── literature_review.py
+│   └── report.py
+└── mock_data/
+    └── sample_data.json
+
+The UI should include:
+
+Home/Research Topic input page
+Research dashboard
+Papers page showing title, year, DOI, citation count, OA status and PDF availability
+Research Analysis page
+Evidence page showing claims with supporting paper/chunk information
+Research Trends page with Plotly charts
+Research Gaps page
+Literature Review page
+Report page with download buttons/placeholders
+
+Use a clean, professional academic/research-dashboard design suitable for a B.Tech final-year project.
+
+Important: Build the UI one step at a time. First create the Streamlit application shell, sidebar/navigation, Home page and mock data. Run it and verify it works before implementing the next page.
+
+Do not invent backend APIs yet. The backend API contract will be added later.
+
+How we'll coordinate
+
+I suggest you and your partner work like this:
+
+YOU                              PARTNER
+─────────────────────────────────────────────
+Backend/AI                       Frontend/UI
+   │                                  │
+   │                                  │
+Qdrant + Gemini                   Streamlit
+   │                                  │
+Research Agent                    Dashboard
+   │                                  │
+FastAPI ◄────────────────────────► API integration
+             later
+
+So yes, start both now.
+
+You can continue with me on the backend one step at a time, while your partner uses the prompt above to start the frontend one step at a time.
+
+For your side, the next backend step after the Gemini test will be connecting Gemini to the existing Research Agent, but I would let your partner get the frontend shell running first in parallel.
+
+so for no for frontend it does not need to coonect with backend right ?
+
+Correct. For now, the frontend does NOT need to connect to your backend. 👍
+
+Your partner can build the complete UI using mock/sample data.
+
+Current setup
+YOU                              YOUR PARTNER
+Backend                          Frontend
+────────                         ──────────
+OpenAlex                         Streamlit UI
+PDF processing                   Pages
+Qdrant                           Dashboard
+Semantic Search                 Charts
+Research Agent                   Mock data
+Gemini                           UI components
+   │                                │
+   │                                │
+   └───────────────┐  ┌─────────────┘
+                   │  │
+              CONNECT LATER
+                 FastAPI
+Why we're doing this
+
+If your partner waits for your backend to be finished, their work will be blocked.
+
+Instead, they can use:
+
+mock_data/sample_data.json
+
+For example:
+
+{
+  "title": "Example Research Paper",
+  "year": 2024,
+  "citations": 120,
+  "section": "Introduction",
+  "evidence": "Example evidence text"
+}
+
+The frontend behaves as if the backend is already working.
+
+Later, we replace:
+
+mock_data
+
+with:
+
+FastAPI → real backend data
+
+without redesigning the UI.
+
+So your responsibilities right now
+
+You:
+
+Qdrant → Semantic Search → Research Agent → Gemini
+
+Partner:
+
+Streamlit → Dashboard → Papers → Analysis → Evidence
+          → Trends → Gaps → Literature Review → Report
+
+Later:
+
+Streamlit
+    ↓
+FastAPI
+    ↓
+Your existing backend
+
+So yes — tell your partner to start the frontend independently with mock data
