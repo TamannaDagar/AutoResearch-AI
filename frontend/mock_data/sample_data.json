@@ -1,0 +1,259 @@
+{
+  "research_topic": "Artificial Intelligence in Healthcare",
+
+  "summary": {
+    "papers_found": 67,
+    "citations": 4821,
+    "open_access": 42,
+    "research_gaps": 8,
+    "analysis_status": "Initial Analysis"
+  },
+
+  "papers": [
+    {
+      "id": 1,
+      "title": "Artificial Intelligence in Healthcare: Opportunities and Challenges",
+      "authors": [
+        "John Smith",
+        "Emily Johnson"
+      ],
+      "year": 2024,
+      "doi": "10.1000/example.2024.001",
+      "citations": 245,
+      "open_access": true,
+      "pdf_available": true
+    },
+
+    {
+      "id": 2,
+      "title": "Machine Learning Applications in Medical Diagnosis",
+      "authors": [
+        "Michael Brown",
+        "Sarah Wilson"
+      ],
+      "year": 2023,
+      "doi": "10.1000/example.2023.002",
+      "citations": 189,
+      "open_access": false,
+      "pdf_available": true
+    },
+
+    {
+      "id": 3,
+      "title": "Deep Learning for Medical Image Analysis",
+      "authors": [
+        "David Lee",
+        "Anna Davis"
+      ],
+      "year": 2022,
+      "doi": "10.1000/example.2022.003",
+      "citations": 312,
+      "open_access": true,
+      "pdf_available": true
+    },
+
+    {
+      "id": 4,
+      "title": "Explainable AI for Clinical Decision Support",
+      "authors": [
+        "Robert Taylor",
+        "Sophia Miller"
+      ],
+      "year": 2024,
+      "doi": "10.1000/example.2024.004",
+      "citations": 156,
+      "open_access": true,
+      "pdf_available": true
+    },
+
+    {
+      "id": 5,
+      "title": "Predictive Analytics in Healthcare Using Machine Learning",
+      "authors": [
+        "Daniel Wilson",
+        "Olivia Moore"
+      ],
+      "year": 2021,
+      "doi": "10.1000/example.2021.005",
+      "citations": 278,
+      "open_access": false,
+      "pdf_available": false
+    }
+  ],
+
+  "trends": {
+    "years": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+
+    "paper_count": [
+      12,
+      19,
+      31,
+      48,
+      67
+    ],
+
+    "citation_count": [
+      320,
+      580,
+      1100,
+      2100,
+      3500
+    ]
+  },
+
+  "keywords": [
+    {
+      "keyword": "Artificial Intelligence",
+      "frequency": 95
+    },
+    {
+      "keyword": "Machine Learning",
+      "frequency": 82
+    },
+    {
+      "keyword": "Deep Learning",
+      "frequency": 74
+    },
+    {
+      "keyword": "Healthcare",
+      "frequency": 68
+    },
+    {
+      "keyword": "Medical Imaging",
+      "frequency": 51
+    },
+    {
+      "keyword": "Explainable AI",
+      "frequency": 43
+    }
+  ],
+
+  "analysis": {
+    "summary": "Artificial Intelligence is increasingly being applied across healthcare research, particularly in medical diagnosis, medical imaging and predictive analytics.",
+
+    "key_findings": [
+      "Machine learning is widely used for healthcare prediction and classification tasks.",
+      "Deep learning has become an important approach for medical image analysis.",
+      "Explainability remains an important research challenge for clinical AI systems.",
+      "Real-world validation of research models remains limited."
+    ],
+
+    "themes": [
+      {
+        "name": "Machine Learning",
+        "paper_count": 42
+      },
+      {
+        "name": "Deep Learning",
+        "paper_count": 36
+      },
+      {
+        "name": "Medical Imaging",
+        "paper_count": 29
+      },
+      {
+        "name": "Predictive Analytics",
+        "paper_count": 24
+      },
+      {
+        "name": "Explainable AI",
+        "paper_count": 18
+      }
+    ]
+  },
+
+  "evidence": [
+    {
+      "id": 1,
+      "claim": "Explainability is an important challenge for clinical AI adoption.",
+      "confidence": 0.89,
+      "paper_title": "Explainable AI for Clinical Decision Support",
+      "paper_year": 2024,
+      "section": "Discussion",
+      "chunk": "Chunk 14",
+      "evidence_text": "The lack of model interpretability continues to create challenges for the adoption of AI-based clinical decision systems.",
+      "verification_status": "Supported"
+    },
+
+    {
+      "id": 2,
+      "claim": "Deep learning is widely used for medical image analysis.",
+      "confidence": 0.94,
+      "paper_title": "Deep Learning for Medical Image Analysis",
+      "paper_year": 2022,
+      "section": "Results",
+      "chunk": "Chunk 21",
+      "evidence_text": "Deep learning approaches have demonstrated strong performance across several medical image classification and segmentation tasks.",
+      "verification_status": "Supported"
+    }
+  ],
+
+  "gaps": [
+    {
+      "id": 1,
+      "title": "Limited Healthcare Datasets",
+      "description": "Limited availability of high-quality datasets makes it difficult to develop and evaluate healthcare AI systems.",
+      "evidence_count": 12
+    },
+
+    {
+      "id": 2,
+      "title": "Model Explainability",
+      "description": "Many studies focus on predictive performance while providing limited interpretability for end users.",
+      "evidence_count": 18
+    },
+
+    {
+      "id": 3,
+      "title": "Real-world Validation",
+      "description": "A limited number of studies evaluate AI models in real-world clinical environments.",
+      "evidence_count": 9
+    },
+
+    {
+      "id": 4,
+      "title": "Data Privacy",
+      "description": "Healthcare research requires approaches that balance AI development with patient data privacy and security.",
+      "evidence_count": 15
+    }
+  ],
+
+  "literature_review": {
+    "introduction": "Artificial Intelligence has emerged as an important research area in healthcare, with applications ranging from diagnosis and medical imaging to predictive analytics.",
+
+    "methodology": "The literature review considers research papers related to artificial intelligence, machine learning and healthcare applications.",
+
+    "themes": [
+      "Machine Learning in Healthcare",
+      "Deep Learning and Medical Imaging",
+      "Predictive Healthcare Analytics",
+      "Explainable Artificial Intelligence"
+    ],
+
+    "future_directions": [
+      "Development of privacy-preserving healthcare AI systems.",
+      "Improved explainability and interpretability.",
+      "Greater real-world clinical validation.",
+      "Creation of high-quality representative datasets."
+    ]
+  },
+
+  "report": {
+    "title": "Artificial Intelligence in Healthcare — Research Analysis Report",
+    "generated_date": "2026-09-18",
+    "sections": [
+      "Executive Summary",
+      "Literature Review",
+      "Research Trends",
+      "Research Gaps",
+      "Evidence Analysis",
+      "References"
+    ]
+  }
+}
