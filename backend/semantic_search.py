@@ -16,37 +16,39 @@ QDRANT_URL = "http://localhost:6333"
 # --------------------------------------------------
 
 def search_papers(query, top_k=3):
-    """
-    Convert the user's query into an embedding
-    and retrieve the most relevant research chunks
-    from Qdrant.
-    """
+    client = QdrantClient(url=QDRANT_URL)
+    model = SentenceTransformer(MODEL_NAME)
 
-    # Connect to Docker Qdrant
-    client = QdrantClient(
-        url=QDRANT_URL
-    )
+    query_embedding = model.encode(query).tolist()
 
-    # Load embedding model
-    model = SentenceTransformer(
-        MODEL_NAME
-    )
+    # Retrieve more chunks than we finally need.
+    # This gives us a better chance of finding
+    # chunks from different papers.
+    candidate_limit = top_k * 5
 
-    # Convert query into vector
-    query_embedding = model.encode(
-        query
-    ).tolist()
-
-    # Search Qdrant
     results = client.query_points(
         collection_name=COLLECTION_NAME,
         query=query_embedding,
-        limit=top_k,
+        limit=candidate_limit,
         with_payload=True
     ).points
 
-    return results
+    # Keep only one result from each paper
+    unique_results = []
+    seen_papers = set()
 
+    for result in results:
+
+        paper_id = result.payload.get("paper_id")
+
+        if paper_id not in seen_papers:
+            unique_results.append(result)
+            seen_papers.add(paper_id)
+
+        if len(unique_results) == top_k:
+            break
+
+    return unique_results
 
 # --------------------------------------------------
 # Build Research Context

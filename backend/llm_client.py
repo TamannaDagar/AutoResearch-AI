@@ -4,7 +4,7 @@ from google import genai
 
 load_dotenv()
 
-MODEL_NAME = "gemini-3.8-flash"
+MODEL_NAME = "gemini-3.5-flash-lite"
 
 
 def get_client():
