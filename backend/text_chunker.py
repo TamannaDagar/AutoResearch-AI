@@ -233,7 +233,44 @@ def save_chunks(chunks, output_file):
         f"Chunks saved to: {output_file}"
     )
 
+def parse_sections(cleaned_text):
+    sections = []
 
+    current_section = "Unknown"
+    current_text = []
+
+    for line in cleaned_text.splitlines():
+
+        line = line.strip()
+
+        if not line:
+            continue
+
+        # Detect section headings
+        if (
+            line.isupper()
+            and len(line.split()) <= 12
+        ):
+            if current_text:
+                sections.append({
+                    "section": current_section,
+                    "text": " ".join(current_text)
+                })
+
+            current_section = line.title()
+            current_text = []
+
+        else:
+            current_text.append(line)
+
+    # Add final section
+    if current_text:
+        sections.append({
+            "section": current_section,
+            "text": " ".join(current_text)
+        })
+
+    return sections
 # --------------------------------------------------
 # Main
 # --------------------------------------------------
