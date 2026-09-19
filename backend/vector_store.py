@@ -1,4 +1,5 @@
 import json
+import uuid
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from sentence_transformers import SentenceTransformer
@@ -34,15 +35,18 @@ def create_vector_store(chunks, embeddings):
 
     points = []
 
-    for index, (chunk, embedding) in enumerate(
-        zip(chunks, embeddings)
-    ):
-
+    for chunk, embedding in zip(chunks, embeddings):
+        point_id = str(
+        uuid.uuid5(
+            uuid.NAMESPACE_DNS,
+            f"{chunk['paper_id']}_{chunk['chunk_id']}"
+        )
+    )
         points.append(
-            PointStruct(
-                id=index,
-                vector=embedding.tolist(),
-                payload={
+        PointStruct(
+            id=point_id,
+            vector=embedding.tolist(),
+            payload={
                 "paper_id": chunk["paper_id"],
                 "title": chunk["title"],
                 "year": chunk["year"],
@@ -52,8 +56,8 @@ def create_vector_store(chunks, embeddings):
                 "word_count": chunk["word_count"],
                 "text": chunk["text"]
             }
-            )
         )
+    )
 
     client.upsert(
         collection_name=COLLECTION_NAME,

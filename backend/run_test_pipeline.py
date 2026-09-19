@@ -8,6 +8,9 @@ from text_chunker import create_chunks, parse_sections
 from sentence_transformers import SentenceTransformer
 from vector_store import create_vector_store
 
+from research_agent import research_agent
+from semantic_search import search_papers, build_research_context
+
 BASE_DIR= Path(__file__).resolve().parent.parent
 
 PDF_FILE= BASE_DIR/ "data"/ "papers"/ "pdfs"/ "test_paper.pdf"
@@ -139,6 +142,40 @@ def run_pipeline():
     print("       TEST PAPER PIPELINE COMPLETE")
     print("========================================")
 
+
+    print("\n[6/6] Running research agent...")
+
+    research_question = (
+        "How can generative AI support learning and education?"
+    )
+
+    print("\nResearch Question:")
+    print(research_question)
+
+    research_result = research_agent(
+        research_question,
+        top_k=3
+    )
+
+    print("\n===== RESEARCH ANSWER =====")
+    print(research_result["answer"])
+
+    print("\n===== SOURCES USED =====")
+
+    for source in research_result["sources"]:
+        print(
+            f"\n[{source['source_number']}] "
+            f"{source['title']} "
+            f"({source['year']})"
+        )
+
+        print("Section:", source["section"])
+        print("Chunk ID:", source["chunk_id"])
+        print("Relevance:", source["relevance_score"])
+
+    print("\n========================================")
+    print("       TEST PAPER PIPELINE COMPLETE")
+    print("========================================")
 
 if __name__ == "__main__":
     run_pipeline()
