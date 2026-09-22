@@ -28,6 +28,12 @@ def load_papers():
 
 
 def get_available_papers(papers):
+    """
+    Select papers that have:
+    1. Open-access status
+    2. A direct PDF URL
+    """
+
     available = []
 
     for paper in papers:
@@ -40,13 +46,18 @@ def get_available_papers(papers):
 
     return available
 
+
 def download_available_papers(papers):
 
     downloaded_papers = []
 
     for index, paper in enumerate(papers, start=1):
 
-        title = paper.get("title", "unknown_paper")
+        title = paper.get(
+            "title",
+            "unknown_paper"
+        )
+
         pdf_url = paper.get("pdf_url")
 
         print("\n----------------------------------------")
@@ -67,15 +78,23 @@ def download_available_papers(papers):
             / f"{paper_id.replace('/', '_')}.pdf"
         )
 
-        # Avoid downloading the same paper again
+        # -------------------------------------
+        # Check whether PDF already exists
+        # -------------------------------------
         if output_path.exists():
+
             print("PDF already exists.")
+
             downloaded_papers.append({
                 "paper": paper,
                 "pdf_path": output_path
             })
+
             continue
 
+        # -------------------------------------
+        # Download PDF
+        # -------------------------------------
         try:
 
             print("Downloading PDF...")
@@ -105,25 +124,86 @@ def download_available_papers(papers):
     return downloaded_papers
 
 
+def process_downloaded_papers(downloaded_papers):
+
+    """
+    Process every successfully downloaded paper.
+
+    Each paper goes through:
+
+    PDF
+    ↓
+    Text extraction
+    ↓
+    Cleaning
+    ↓
+    Section parsing
+    ↓
+    Chunking
+    ↓
+    Embeddings
+    ↓
+    Qdrant
+    """
+
+    processed_papers = []
+
+    for index, item in enumerate(
+        downloaded_papers,
+        start=1
+    ):
+
+        paper = item["paper"]
+        pdf_path = item["pdf_path"]
+
+        print("\n========================================")
+        print(f"PROCESSING PAPER {index}")
+        print("========================================")
+
+        print("Title:", paper.get("title"))
+        print("PDF:", pdf_path)
+
+        try:
+
+            result = process_one_paper(
+                pdf_path,
+                paper
+            )
+
+            processed_papers.append(result)
+
+            print("\nPaper processed successfully.")
+
+        except Exception as error:
+
+            print("\nPaper processing failed:")
+            print(error)
+
+    return processed_papers
+
+
 def main():
 
     print("\n========================================")
     print("       MULTI-PAPER INGESTION")
     print("========================================")
 
+    # -------------------------------------
+    # 1. Load metadata
+    # -------------------------------------
     papers = load_papers()
 
-    print("\nTotal papers in metadata:", len(papers))
-
-    available_papers = get_available_papers(papers)
-
-    downloaded_papers = download_available_papers(
-        available_papers
+    print(
+        "\nTotal papers in metadata:",
+        len(papers)
     )
 
-    print("\n========================================")
-    print("Downloaded papers:", len(downloaded_papers))
-    print("========================================")
+    # -------------------------------------
+    # 2. Find papers with direct PDF URLs
+    # -------------------------------------
+    available_papers = get_available_papers(
+        papers
+    )
 
     print(
         "Papers with accessible PDF:",
@@ -136,12 +216,46 @@ def main():
         available_papers,
         start=1
     ):
+
         print(
             f"{index}. "
             f"{paper.get('title')}"
         )
 
+    # -------------------------------------
+    # 3. Download PDFs
+    # -------------------------------------
+    downloaded_papers = download_available_papers(
+        available_papers
+    )
+
     print("\n========================================")
+    print(
+        "Downloaded papers:",
+        len(downloaded_papers)
+    )
+    print("========================================")
+
+    # -------------------------------------
+    # 4. Process downloaded PDFs
+    # -------------------------------------
+    processed_papers = process_downloaded_papers(
+        downloaded_papers
+    )
+
+    # -------------------------------------
+    # 5. Final summary
+    # -------------------------------------
+    print("\n========================================")
+    print("       INGESTION SUMMARY")
+    print("========================================")
+
+    print(
+        "Papers successfully processed:",
+        len(processed_papers)
+    )
+
+    print("========================================")
 
 
 if __name__ == "__main__":

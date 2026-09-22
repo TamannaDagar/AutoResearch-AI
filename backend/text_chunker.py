@@ -1,437 +1,128 @@
-from pathlib import Path
-import json
+import requests
 
 
-# --------------------------------------------------
-# Project paths
-# --------------------------------------------------
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-INPUT_FILE = (
-    BASE_DIR
-    / "data"
-    / "papers"
-    / "text"
-    / "test_paper_cleaned.txt"
-)
-
-OUTPUT_FILE = (
-    BASE_DIR
-    / "data"
-    / "papers"
-    / "chunks"
-    / "test_paper_chunks.json"
-)
-
-METADATA_FILE = (
-    BASE_DIR
-    / "data"
-    / "papers"
-    / "cleaned_papers.json"
-)
-
-
-# --------------------------------------------------
-# Section detection
-# --------------------------------------------------
-
-SECTION_HEADINGS = {
-    "ABSTRACT",
-    "INTRODUCTION",
-    "A SYSTEMS VIEW OF GENERATIVE AI IN EDUCATION",
-    "BACKGROUND",
-    "RELATED WORK",
-    "LITERATURE REVIEW",
-    "METHODOLOGY",
-    "METHOD",
-    "METHODS",
-    "MATERIALS AND METHODS",
-    "RESULTS",
-    "DISCUSSION",
-    "CONCLUSION",
-    "CONCLUSIONS",
-    "LIMITATIONS",
-    "FUTURE WORK",
-    "REFERENCES",
-    "ACKNOWLEDGEMENTS",
-    "ACKNOWLEDGMENTS",
-}
-
-
-def is_section_heading(line):
+# -------------------------------------
+# Find a direct PDF from OA locations
+# -------------------------------------
+def get_direct_pdf_url(work):
     """
-    Check whether a line represents a research-paper section.
+    Search OpenAlex OA locations for a direct PDF URL.
+
+    Priority:
+    1. best_oa_location
+    2. other locations
+
+    We never use oa_url as a PDF URL because
+    it may point to a landing page or DOI.
     """
 
-    normalized = line.strip().upper()
+    locations = work.get("locations", [])
 
-    return normalized in SECTION_HEADINGS
+    # -------------------------------------
+    # First: best OA location
+    # -------------------------------------
 
+    best_location = work.get("best_oa_location")
 
-# --------------------------------------------------
-# Split text into sections
-# --------------------------------------------------
+    if best_location:
 
-def split_into_sections(text):
-    """
-    Divide the cleaned paper into logical sections.
+        pdf_url = best_location.get("pdf_url")
 
-    Returns:
-        [
-            {
-                "section": "ABSTRACT",
-                "text": "..."
-            },
-            {
-                "section": "INTRODUCTION",
-                "text": "..."
-            }
-        ]
-    """
+        if pdf_url:
+            return pdf_url
 
-    lines = text.splitlines()
+    # -------------------------------------
+    # Second: other OA locations
+    # -------------------------------------
 
-    sections = []
+    for location in locations:
 
-    current_section = "UNKNOWN"
-    current_lines = []
-
-    for line in lines:
-
-        line = line.strip()
-
-        if not line:
+        if not location:
             continue
 
-        if is_section_heading(line):
+        pdf_url = location.get("pdf_url")
 
-            # Save previous section.
-            if current_lines:
+        if pdf_url:
+            return pdf_url
 
-                section_text = " ".join(current_lines).strip()
-
-                if section_text:
-                    sections.append({
-                        "section": current_section,
-                        "text": section_text
-                    })
-
-            current_section = line.upper()
-            current_lines = []
-
-        else:
-            current_lines.append(line)
-
-    # Save final section.
-    if current_lines:
-
-        section_text = " ".join(current_lines).strip()
-
-        if section_text:
-            sections.append({
-                "section": current_section,
-                "text": section_text
-            })
-
-    return sections
+    return None
 
 
-# --------------------------------------------------
-# Create chunks
-# --------------------------------------------------
+# -------------------------------------
+# Search OpenAlex
+# -------------------------------------
+def search_papers(topic, per_page=10):
 
-def create_chunks(
-    sections,
-    paper_metadata,
-    max_words=400,
-    overlap_words=80
-):
-    """
-    Create chunks within each section.
+    url = "https://api.openalex.org/works"
 
-    Chunks do not cross section boundaries.
+    params = {
+        "search": topic,
+        "per_page": per_page
+    }
 
-    Each chunk also contains metadata
-    identifying the research paper.
-    """
-
-    chunks = []
-
-    for section_data in sections:
-
-        section_name = section_data["section"]
-        section_text = section_data["text"]
-
-        words = section_text.split()
-
-        start = 0
-
-        while start < len(words):
-
-            end = min(
-                start + max_words,
-                len(words)
-            )
-
-            chunk_words = words[start:end]
-
-            chunk_text = " ".join(chunk_words)
-
-            chunks.append({
-                # Paper metadata
-                "paper_id": paper_metadata["openalex_id"],
-                "title": paper_metadata["title"],
-                "year": paper_metadata["year"],
-                "doi": paper_metadata["doi"],
-
-                # Chunk metadata
-                "chunk_id": len(chunks),
-                "chunk_index": len(chunks),
-                "section": section_name,
-                "word_count": len(chunk_words),
-
-                # Actual chunk text
-                "text": chunk_text
-            })
-
-            # Stop if this is the final chunk.
-            if end >= len(words):
-                break
-
-            # Move forward while keeping overlap.
-            start = end - overlap_words
-
-    return chunks
-
-
-# --------------------------------------------------
-# Save chunks
-# --------------------------------------------------
-
-def save_chunks(chunks, output_file):
-
-    output_file.parent.mkdir(
-        parents=True,
-        exist_ok=True
+    response = requests.get(
+        url,
+        params=params,
+        timeout=30
     )
 
-    with open(
-        output_file,
-        "w",
-        encoding="utf-8"
-    ) as file:
+    if response.status_code != 200:
 
-        json.dump(
-            chunks,
-            file,
-            indent=4,
-            ensure_ascii=False
+        print("Error While Searching Papers")
+        print("Status Code:", response.status_code)
+
+        return []
+
+    data = response.json()
+
+    papers = []
+
+    for work in data["results"]:
+
+        # -------------------------------------
+        # Open access information
+        # -------------------------------------
+
+        open_access = work.get(
+            "open_access",
+            {}
         )
 
-    print(
-        f"Chunks saved to: {output_file}"
-    )
+        # -------------------------------------
+        # Find direct PDF
+        # -------------------------------------
 
-def parse_sections(cleaned_text):
-    sections = []
+        pdf_url = get_direct_pdf_url(work)
 
-    current_section = "Unknown"
-    current_text = []
+        # -------------------------------------
+        # Create paper object
+        # -------------------------------------
 
-    for line in cleaned_text.splitlines():
+        paper = {
 
-        line = line.strip()
+            "title": work.get("title"),
 
-        if not line:
-            continue
+            "year": work.get(
+                "publication_year"
+            ),
 
-        # Detect section headings
-        if (
-            line.isupper()
-            and len(line.split()) <= 12
-        ):
-            if current_text:
-                sections.append({
-                    "section": current_section,
-                    "text": " ".join(current_text)
-                })
+            "doi": work.get("doi"),
 
-            current_section = line.title()
-            current_text = []
+            "cited_by_count": work.get(
+                "cited_by_count",
+                0
+            ),
 
-        else:
-            current_text.append(line)
+            "openalex_id": work.get("id"),
 
-    # Add final section
-    if current_text:
-        sections.append({
-            "section": current_section,
-            "text": " ".join(current_text)
-        })
+            "is_oa": open_access.get(
+                "is_oa",
+                False
+            ),
 
-    return sections
-# --------------------------------------------------
-# Main
-# --------------------------------------------------
+            "pdf_url": pdf_url
+        }
 
-if __name__ == "__main__":
+        papers.append(paper)
 
-    # ----------------------------------------------
-    # Step 1: Read paper metadata
-    # ----------------------------------------------
-
-    with open(
-        METADATA_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        papers = json.load(file)
-
-    # For the current test paper, find its metadata.
-    paper_metadata = next(
-        paper
-        for paper in papers
-        if paper["title"]
-        == "Towards social generative AI for education: theory, practices and ethics"
-    )
-
-    print(
-        "\nPaper:",
-        paper_metadata["title"]
-    )
-
-    print(
-        "Year:",
-        paper_metadata["year"]
-    )
-
-    print(
-        "DOI:",
-        paper_metadata["doi"]
-    )
-
-    print(
-        "OpenAlex ID:",
-        paper_metadata["openalex_id"]
-    )
-
-    # ----------------------------------------------
-    # Step 2: Read cleaned text
-    # ----------------------------------------------
-
-    with open(
-        INPUT_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        text = file.read()
-
-    print(
-        "\nTotal words:",
-        len(text.split())
-    )
-
-    # ----------------------------------------------
-    # Step 3: Detect sections
-    # ----------------------------------------------
-
-    sections = split_into_sections(text)
-
-    print(
-        "Sections found:",
-        len(sections)
-    )
-
-    print("\nDetected sections:")
-
-    for section in sections:
-
-        print(
-            f"- {section['section']}: "
-            f"{len(section['text'].split())} words"
-        )
-
-    # ----------------------------------------------
-    # Step 4: Create chunks
-    # ----------------------------------------------
-
-    chunks = create_chunks(
-        sections,
-        paper_metadata,
-        max_words=400,
-        overlap_words=80
-    )
-
-    print(
-        "\nChunks created:",
-        len(chunks)
-    )
-
-    # ----------------------------------------------
-    # Step 5: Save chunks
-    # ----------------------------------------------
-
-    save_chunks(
-        chunks,
-        OUTPUT_FILE
-    )
-
-    # ----------------------------------------------
-    # Step 6: Show first chunk
-    # ----------------------------------------------
-
-    if chunks:
-
-        print(
-            "\n===== FIRST CHUNK ====="
-        )
-
-        print(
-            "Paper ID:",
-            chunks[0]["paper_id"]
-        )
-
-        print(
-            "Title:",
-            chunks[0]["title"]
-        )
-
-        print(
-            "Year:",
-            chunks[0]["year"]
-        )
-
-        print(
-            "DOI:",
-            chunks[0]["doi"]
-        )
-
-        print(
-            "Chunk ID:",
-            chunks[0]["chunk_id"]
-        )
-
-        print(
-            "Section:",
-            chunks[0]["section"]
-        )
-
-        print(
-            "Word count:",
-            chunks[0]["word_count"]
-        )
-
-        print(
-            "\nText:\n"
-        )
-
-        print(
-            chunks[0]["text"]
-        )
-
-        print(
-            "\n===== END FIRST CHUNK ====="
-        )
+    return papers
