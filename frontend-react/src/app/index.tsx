@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+const API_URL = "http://127.0.0.1:8000";
 import {
   StyleSheet,
   Text,
@@ -145,29 +146,47 @@ function SignupScreen({
     );
   };
 
-  const handleSignup = () => {
-    setError("");
-    setSuccess("");
+const handleSignup = async () => {
+  setError("");
+  setSuccess("");
 
-    if (!name.trim()) {
-      setError("Please enter your name.");
-      return;
-    }
+  if (!name.trim()) {
+    setError("Please enter your name.");
+    return;
+  }
 
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
+  if (!email.trim()) {
+    setError("Please enter your email.");
+    return;
+  }
 
-    if (!validatePassword(password)) {
-      setError(
-        "Password must contain 8+ characters, uppercase, lowercase, number, and special character."
-      );
-      return;
-    }
+  if (!password) {
+    setError("Please enter your password.");
+    return;
+  }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/signup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.detail || "Signup failed.");
       return;
     }
 
@@ -176,147 +195,165 @@ function SignupScreen({
     setTimeout(() => {
       onLogin();
     }, 1000);
-  };
-
+  } catch (error) {
+    console.error("Signup error:", error);
+    setError(
+      "Unable to connect to the backend. Make sure the backend server is running."
+    );
+  }
+};
   return (
-    <View style={styles.container}>
-      <Background3D />
-
-      <View style={styles.darkOverlay} />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.signupScroll}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          contentContainerStyle={styles.signupScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.signupCard}>
-            <Pressable onPress={onBack} style={styles.backButton}>
-              <Text style={styles.backText}>← Back</Text>
-            </Pressable>
+        <View style={styles.signupCard}>
 
-            <Text style={styles.signupTitle}>
-              Create New Account
-            </Text>
+          <Pressable
+            style={styles.backButton}
+            onPress={onBack}
+          >
+            <Text style={styles.backText}>← Back</Text>
+          </Pressable>
 
-            <Text style={styles.signupSubtitle}>
-              Start your journey with Auto Research AI
-            </Text>
+          <Text style={styles.signupTitle}>
+            Create Account
+          </Text>
 
-            <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.signupSubtitle}>
+            Start your intelligent research journey.
+          </Text>
 
+          <Text style={styles.label}>
+            Name
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your name"
+            placeholderTextColor="#64748b"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
+
+          <Text style={styles.label}>
+            Email
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="#64748b"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <Text style={styles.label}>
+            Password
+          </Text>
+
+          <View style={styles.passwordContainer}>
             <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
+              style={styles.passwordInput}
+              placeholder="Create a password"
               placeholderTextColor="#64748b"
-              value={name}
-              onChangeText={setName}
-            />
-
-            <Text style={styles.label}>Email Address</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor="#64748b"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-              autoCorrect={false}
             />
-
-            <Text style={styles.label}>Password</Text>
-
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Create a strong password"
-                placeholderTextColor="#64748b"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-
-              <Pressable
-                onPress={() =>
-                  setShowPassword(!showPassword)
-                }
-              >
-                <Text style={styles.showButton}>
-                  {showPassword ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.passwordHint}>
-              8+ characters • Uppercase • Lowercase • Number •
-              Special character
-            </Text>
-
-            <Text style={styles.label}>Confirm Password</Text>
-
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Re-enter your password"
-                placeholderTextColor="#64748b"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-              />
-
-              <Pressable
-                onPress={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
-              >
-                <Text style={styles.showButton}>
-                  {showConfirmPassword ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-            </View>
-
-            {error !== "" && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
-
-            {success !== "" && (
-              <Text style={styles.successText}>{success}</Text>
-            )}
 
             <Pressable
-              style={({ pressed }) => [
-                styles.createButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={handleSignup}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.createButtonText}>
-                CREATE ACCOUNT
+              <Text style={styles.showButton}>
+                {showPassword ? "HIDE" : "SHOW"}
               </Text>
             </Pressable>
-
-            <View style={styles.loginRow}>
-              <Text style={styles.loginText}>
-                Already have an account?
-              </Text>
-
-              <Pressable onPress={onLogin}>
-                <Text style={styles.loginLink}> Login</Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.securityText}>
-              🔒 Secure authentication will be connected to the
-              backend.
-            </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+
+          <Text style={styles.passwordHint}>
+            Minimum 8 characters with uppercase, lowercase,
+            number, and special character.
+          </Text>
+
+          <Text style={styles.label}>
+            Confirm Password
+          </Text>
+
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm your password"
+              placeholderTextColor="#64748b"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+            />
+
+            <Pressable
+              onPress={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
+            >
+              <Text style={styles.showButton}>
+                {showConfirmPassword ? "HIDE" : "SHOW"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {error ? (
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          ) : null}
+
+          {success ? (
+            <Text style={styles.successText}>
+              {success}
+            </Text>
+          ) : null}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleSignup}
+          >
+            <Text style={styles.createButtonText}>
+              CREATE ACCOUNT
+            </Text>
+          </Pressable>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>
+              Already have an account?{" "}
+            </Text>
+
+            <Pressable onPress={onLogin}>
+              <Text style={styles.loginLink}>
+                Login
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.securityText}>
+            Your password is securely processed by the backend.
+          </Text>
+
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -335,7 +372,6 @@ function LoginScreen({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
@@ -343,124 +379,154 @@ function LoginScreen({
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError("");
 
-    if (!validateEmail(email)) {
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
       setError("Please enter a valid email address.");
       return;
     }
 
-    if (!password.trim()) {
+    if (!password) {
       setError("Please enter your password.");
       return;
     }
 
-    /*
-      TEMPORARY FRONTEND LOGIN
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
 
-      Real authentication will be connected
-      to the backend in Step 4.
-    */
+      const data = await response.json();
 
-    onDashboard();
+      if (!response.ok) {
+        setError(data.detail || "Invalid email or password.");
+        return;
+      }
+
+      console.log("Login successful:", data);
+
+      onDashboard();
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(
+        "Unable to connect to the backend. Make sure the backend server is running."
+      );
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <Background3D />
-
-      <View style={styles.darkOverlay} />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.loginScroll}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          contentContainerStyle={styles.loginScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.loginCard}>
-            <Pressable onPress={onBack}>
-              <Text style={styles.backText}>← Back</Text>
-            </Pressable>
+        <View style={styles.loginCard}>
+          <Pressable
+            style={styles.backButton}
+            onPress={onBack}
+          >
+            <Text style={styles.backText}>← Back</Text>
+          </Pressable>
 
-            <Text style={styles.loginTitle}>
-              Welcome Back
-            </Text>
+          <Text style={styles.loginTitle}>
+            Welcome Back
+          </Text>
 
-            <Text style={styles.signupSubtitle}>
-              Login to Auto Research AI
-            </Text>
+          <Text style={styles.signupSubtitle}>
+            Login to your Auto Research AI account.
+          </Text>
 
-            <Text style={styles.label}>Email Address</Text>
+          <Text style={styles.label}>
+            Email
+          </Text>
 
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="#64748b"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <Text style={styles.label}>
+            Password
+          </Text>
+
+          <View style={styles.passwordContainer}>
             <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
+              style={styles.passwordInput}
+              placeholder="Enter your password"
               placeholderTextColor="#64748b"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-              autoCorrect={false}
             />
 
-            <Text style={styles.label}>Password</Text>
-
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Enter your password"
-                placeholderTextColor="#64748b"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-
-              <Pressable
-                onPress={() =>
-                  setShowPassword(!showPassword)
-                }
-              >
-                <Text style={styles.showButton}>
-                  {showPassword ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-            </View>
-
-            {error !== "" && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
-
             <Pressable
-              style={({ pressed }) => [
-                styles.createButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={handleLogin}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.createButtonText}>
-                LOGIN
+              <Text style={styles.showButton}>
+                {showPassword ? "HIDE" : "SHOW"}
               </Text>
             </Pressable>
-
-            <View style={styles.loginRow}>
-              <Text style={styles.loginText}>
-                Don't have an account?
-              </Text>
-
-              <Pressable onPress={onSignup}>
-                <Text style={styles.loginLink}>
-                  {" "}
-                  Create Account
-                </Text>
-              </Pressable>
-            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+
+          {error ? (
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleLogin}
+          >
+            <Text style={styles.createButtonText}>
+              LOGIN
+            </Text>
+          </Pressable>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>
+              Don't have an account?{" "}
+            </Text>
+
+            <Pressable onPress={onSignup}>
+              <Text style={styles.loginLink}>
+                Sign Up
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.securityText}>
+            Your account is securely verified by the backend.
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -571,7 +637,7 @@ function Dashboard({
       </View>
     </View>
   );
-}
+};
 
 /* =========================
    MAIN APP
