@@ -1,53 +1,98 @@
-from semantic_search import search_papers, build_research_context
+from semantic_search import (
+    search_papers,
+    build_research_context
+)
+
 from llm_client import generate_answer
 
 
-def build_analysis_prompt(question, research_context):
+def build_analysis_prompt(research_context):
+
+    question = research_context["question"]
+
+    papers = research_context["papers"]
+
+    evidence = research_context["evidence"]
 
     prompt = f"""
 You are a research analysis assistant.
 
-Your task is to answer the user's research question
-using only the research evidence provided below.
+Your task is to answer the research question
+using ONLY the research evidence provided below.
 
 IMPORTANT RULES:
 
 1. Use only the provided research evidence.
 2. Do not invent facts or sources.
-3. Clearly distinguish evidence from interpretation.
-4. When making an important claim, identify the supporting source.
-5. If the evidence is insufficient, say so.
-6. Prefer evidence from the retrieved papers.
-7. Do not introduce outside knowledge.
+3. Do not introduce outside knowledge.
+4. Clearly distinguish evidence from interpretation.
+5. When making an important claim, identify the supporting source number.
+6. If the evidence is insufficient, explicitly say so.
+7. Prefer direct evidence from the retrieved research chunks.
+8. Do not treat relevance scores as evidence.
+9. Do not make claims about a paper that are not supported
+   by the provided evidence.
 
 RESEARCH QUESTION:
+
 {question}
 
-RETRIEVED RESEARCH EVIDENCE:
+
+RESEARCH PAPERS:
+
 """
 
-    for source in research_context:
+    for index, paper in enumerate(
+        papers,
+        start=1
+    ):
 
         prompt += f"""
-SOURCE {source['source_number']}
+PAPER {index}
 
 Title:
-{source['title']}
+{paper["title"]}
 
 Year:
-{source['year']}
-
-Section:
-{source['section']}
+{paper["year"]}
 
 DOI:
-{source['doi']}
+{paper["doi"]}
+
+Paper ID:
+{paper["paper_id"]}
+
+----------------------------------------
+"""
+
+    prompt += """
+
+RETRIEVED RESEARCH EVIDENCE:
+
+"""
+
+    for source in evidence:
+
+        prompt += f"""
+SOURCE {source["source_number"]}
+
+Paper:
+{source["title"]}
+
+Year:
+{source["year"]}
+
+Section:
+{source["section"]}
+
+Chunk ID:
+{source["chunk_id"]}
 
 Relevance Score:
-{source['relevance_score']}
+{source["relevance_score"]}
 
 Evidence:
-{source['text']}
+{source["text"]}
 
 ----------------------------------------
 """
@@ -56,68 +101,171 @@ Evidence:
 
 ANALYSIS TASK:
 
-Based only on the retrieved evidence:
+Based ONLY on the retrieved evidence:
 
-1. Identify the main findings relevant to the question.
-2. Compare the evidence across sources where possible.
+1. Identify findings that are directly relevant to the question.
+2. Explain what the evidence supports.
 3. Identify important limitations or uncertainties.
-4. Provide a concise research-oriented synthesis.
-5. Cite the source number for important claims.
+4. Distinguish direct evidence from interpretation.
+5. Provide a concise research-oriented synthesis.
+6. Cite the source number for important claims.
 
-Do not introduce information that is not supported
-by the retrieved evidence.
+If the retrieved evidence does not provide enough information
+to answer part of the question, explicitly state that the
+available evidence is insufficient.
+
+Do not introduce outside information.
 """
 
     return prompt
 
 
-def research_agent(question, top_k=5):
+def research_agent(
+    question,
+    top_k=5
+):
 
-    # Step 1: Retrieve relevant chunks from Qdrant
-    results = search_papers(question, top_k=top_k)
+    # -------------------------------------
+    # Step 1: Semantic search
+    # -------------------------------------
 
-    # Step 2: Convert retrieved results into research context
-    research_context = build_research_context(results)
-
-    # Step 3: Build evidence-based prompt
-    analysis_prompt = build_analysis_prompt(
+    results = search_papers(
         question,
+        top_k=top_k
+    )
+
+    # -------------------------------------
+    # Step 2: Build research context
+    # -------------------------------------
+
+    research_context = build_research_context(
+        question,
+        results
+    )
+
+    # -------------------------------------
+    # Step 3: Build analysis prompt
+    # -------------------------------------
+
+    analysis_prompt = build_analysis_prompt(
         research_context
     )
 
-    # Step 4: Send prompt to Gemini
-    answer = generate_answer(analysis_prompt)
+    # -------------------------------------
+    # Step 4: Generate answer
+    # -------------------------------------
+
+    answer = generate_answer(
+        analysis_prompt
+    )
+
+    # -------------------------------------
+    # Step 5: Return complete result
+    # -------------------------------------
 
     return {
+
         "question": question,
-        "sources": research_context,
-        "answer": answer
+
+        "answer": answer,
+
+        "research_context": research_context,
+
+        "sources": research_context[
+            "evidence"
+        ],
+
+        "source_count": research_context[
+            "evidence_count"
+        ]
     }
 
 
+# -----------------------------------------
+# Test
+# -----------------------------------------
+
 if __name__ == "__main__":
 
-    question = "How can generative AI support learning and education?"
+    question = (
+        "How can generative AI support "
+        "learning and education?"
+    )
 
-    research_result = research_agent(
+    result = research_agent(
         question,
         top_k=3
     )
 
-    print("\n===== RESEARCH AGENT =====")
+    print(
+        "\n========================================"
+    )
 
-    print("\nResearch Question:")
-    print(research_result["question"])
+    print(
+        "         RESEARCH AGENT"
+    )
 
-    print("\nSources Retrieved:")
-    print(len(research_result["sources"]))
+    print(
+        "========================================"
+    )
 
-    print("\n===== GEMINI RESEARCH ANALYSIS =====")
-    print(research_result["answer"])
+    print(
+        "\nResearch Question:"
+    )
 
-    print("\n===== SOURCES USED =====")
+    print(
+        result["question"]
+    )
 
-    for source in research_result["sources"]:
+    print(
+        "\nPapers Retrieved:"
+    )
+
+    print(
+        result["research_context"][
+            "paper_count"
+        ]
+    )
+
+    print(
+        "\nEvidence Retrieved:"
+    )
+
+    print(
+        result["research_context"][
+            "evidence_count"
+        ]
+    )
+
+    print(
+        "\n========================================"
+    )
+
+    print(
+        "       GEMINI RESEARCH ANALYSIS"
+    )
+
+    print(
+        "========================================"
+    )
+
+    print(
+        result["answer"]
+    )
+
+    print(
+        "\n========================================"
+    )
+
+    print(
+        "           SOURCES USED"
+    )
+
+    print(
+        "========================================"
+    )
+
+    for source in result["sources"]:
 
         print(
             f"\n[{source['source_number']}] "
@@ -125,4 +273,16 @@ if __name__ == "__main__":
             f"({source['year']})"
         )
 
-    print("\n===== END RESEARCH AGENT =====")
+        print(
+            "Section:",
+            source["section"]
+        )
+
+        print(
+            "Chunk:",
+            source["chunk_id"]
+        )
+
+    print(
+        "\n========================================"
+    )

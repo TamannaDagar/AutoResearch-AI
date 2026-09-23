@@ -2,29 +2,57 @@ from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
 
-# --------------------------------------------------
-# Configuration
-# --------------------------------------------------
-
 MODEL_NAME = "all-MiniLM-L6-v2"
 COLLECTION_NAME = "research_papers"
 QDRANT_URL = "http://localhost:6333"
 
 
-# --------------------------------------------------
-# Semantic Search
-# --------------------------------------------------
+def search_papers(
+    query,
+    top_k=5,
+    allowed_sections=None,
+    one_result_per_paper=False
+):
+    """
+    Search the Qdrant research-paper collection.
 
-def search_papers(query, top_k=3):
-    client = QdrantClient(url=QDRANT_URL)
-    model = SentenceTransformer(MODEL_NAME)
+    Parameters:
+        query:
+            Research question or search query.
 
-    query_embedding = model.encode(query).tolist()
+        top_k:
+            Number of evidence chunks to return.
 
-    # Retrieve more chunks than we finally need.
-    # This gives us a better chance of finding
-    # chunks from different papers.
-    candidate_limit = top_k * 5
+        allowed_sections:
+            Optional list of sections to search.
+            Example:
+                ["LIMITATIONS", "DISCUSSION", "CONCLUSION"]
+
+        one_result_per_paper:
+            If True, return at most one result from each paper.
+            Useful for paper-level comparison.
+
+            If False, multiple useful chunks from the same paper
+            can be returned.
+            Useful for evidence-based analysis.
+    """
+
+    client = QdrantClient(
+        url=QDRANT_URL
+    )
+
+    model = SentenceTransformer(
+        MODEL_NAME
+    )
+
+    query_embedding = model.encode(
+        query
+    ).tolist()
+
+    # Retrieve more candidates than needed.
+    # This gives section filtering and paper diversity
+    # enough candidates to work with.
+    candidate_limit = max(top_k * 10, 20)
 
     results = client.query_points(
         collection_name=COLLECTION_NAME,
@@ -33,96 +61,281 @@ def search_papers(query, top_k=3):
         with_payload=True
     ).points
 
-    # Keep only one result from each paper
-    unique_results = []
+    # Normalize allowed section names once.
+    normalized_allowed_sections = None
+
+    if allowed_sections:
+
+        normalized_allowed_sections = {
+            section.strip().upper()
+            for section in allowed_sections
+        }
+
+    selected_results = []
     seen_papers = set()
 
     for result in results:
 
-        paper_id = result.payload.get("paper_id")
+        payload = result.payload
 
-        if paper_id not in seen_papers:
-            unique_results.append(result)
+        # ----------------------------------------
+        # SECTION FILTER
+        # ----------------------------------------
+
+        section = payload.get(
+            "section",
+            ""
+        ).strip().upper()
+
+        if normalized_allowed_sections:
+
+            if section not in normalized_allowed_sections:
+                continue
+
+        # ----------------------------------------
+        # PAPER DIVERSITY
+        # ----------------------------------------
+
+        paper_id = payload.get(
+            "paper_id"
+        )
+
+        if one_result_per_paper:
+
+            if paper_id in seen_papers:
+                continue
+
             seen_papers.add(paper_id)
 
-        if len(unique_results) == top_k:
+        # ----------------------------------------
+        # ADD RESULT
+        # ----------------------------------------
+
+        selected_results.append(
+            result
+        )
+
+        if len(selected_results) >= top_k:
             break
 
-    return unique_results
+    return selected_results
 
-# --------------------------------------------------
-# Build Research Context
-# --------------------------------------------------
 
-def build_research_context(results):
+def build_research_context(
+    question,
+    results
+):
     """
-    Convert Qdrant search results into a structured
-    research context.
+    Convert raw Qdrant search results into a
+    reusable research context.
 
-    This context can later be passed to an LLM
-    for research analysis and answer generation.
+    This structure can be shared by:
+
+        Research Agent
+        Compare Agent
+        Gap Agent
+        Evidence Agent
+        Synthesis Agent
+        Literature Review Agent
     """
 
-    context = []
+    evidence = []
 
-    for i, result in enumerate(
+    papers = {}
+
+    for index, result in enumerate(
         results,
         start=1
     ):
 
         payload = result.payload
 
-        source = {
-            "source_number": i,
+        paper_id = payload.get(
+            "paper_id"
+        )
+
+        # ----------------------------------------
+        # EVIDENCE OBJECT
+        # ----------------------------------------
+
+        evidence_item = {
+
+            "source_number": index,
+
             "relevance_score": round(
                 result.score,
                 4
             ),
-            "paper_id": payload.get(
-                "paper_id"
-            ),
+
+            "paper_id": paper_id,
+
             "title": payload.get(
                 "title"
             ),
+
             "year": payload.get(
                 "year"
             ),
+
             "doi": payload.get(
                 "doi"
             ),
+
             "section": payload.get(
                 "section"
             ),
+
             "chunk_id": payload.get(
                 "chunk_id"
             ),
+
+            "word_count": payload.get(
+                "word_count"
+            ),
+
             "text": payload.get(
                 "text"
             )
         }
 
-        context.append(
-            source
+        evidence.append(
+            evidence_item
         )
 
-    return context
+        # ----------------------------------------
+        # UNIQUE PAPER
+        # ----------------------------------------
+
+        if paper_id not in papers:
+
+            papers[paper_id] = {
+
+                "paper_id": paper_id,
+
+                "title": payload.get(
+                    "title"
+                ),
+
+                "year": payload.get(
+                    "year"
+                ),
+
+                "doi": payload.get(
+                    "doi"
+                )
+            }
+
+    # ----------------------------------------
+    # FINAL RESEARCH CONTEXT
+    # ----------------------------------------
+
+    return {
+
+        "question": question,
+
+        "papers": list(
+            papers.values()
+        ),
+
+        "evidence": evidence,
+
+        "evidence_count": len(
+            evidence
+        ),
+
+        "paper_count": len(
+            papers
+        )
+    }
 
 
-# --------------------------------------------------
-# Display Search Results
-# --------------------------------------------------
-
-def display_results(results):
+def display_research_context(
+    research_context
+):
     """
-    Display the retrieved research sources
-    in a readable format.
+    Display the structured research context
+    in the terminal.
+    """
+
+    print(
+        "\n===== RESEARCH CONTEXT ====="
+    )
+
+    print(
+        "\nQuestion:",
+        research_context["question"]
+    )
+
+    print(
+        "Papers:",
+        research_context["paper_count"]
+    )
+
+    print(
+        "Evidence items:",
+        research_context["evidence_count"]
+    )
+
+    for source in research_context[
+        "evidence"
+    ]:
+
+        print(
+            f"\n{'-' * 60}"
+        )
+
+        print(
+            "SOURCE:",
+            source["source_number"]
+        )
+
+        print(
+            "Title:",
+            source["title"]
+        )
+
+        print(
+            "Year:",
+            source["year"]
+        )
+
+        print(
+            "Section:",
+            source["section"]
+        )
+
+        print(
+            "Chunk:",
+            source["chunk_id"]
+        )
+
+        print(
+            "Relevance:",
+            source["relevance_score"]
+        )
+
+        print(
+            "Evidence:",
+            source["text"][:500]
+        )
+
+    print(
+        f"\n{'-' * 60}"
+    )
+
+
+def display_results(
+    results
+):
+    """
+    Display raw semantic-search results.
     """
 
     print(
         "\n===== SEMANTIC SEARCH RESULTS ====="
     )
 
-    for i, result in enumerate(
+    for index, result in enumerate(
         results,
         start=1
     ):
@@ -134,7 +347,7 @@ def display_results(results):
         )
 
         print(
-            f"Result {i}"
+            f"Result {index}"
         )
 
         print(
@@ -210,100 +423,30 @@ def display_results(results):
     )
 
 
-# --------------------------------------------------
-# Display Research Context
-# --------------------------------------------------
-
-def display_research_context(context):
-    """
-    Display the structured research context
-    that will later be given to the AI analysis layer.
-    """
-
-    print(
-        "\n===== RESEARCH CONTEXT ====="
-    )
-
-    for source in context:
-
-        print(
-            f"\n{'-' * 60}"
-        )
-
-        print(
-            f"SOURCE {source['source_number']}"
-        )
-
-        print(
-            "Title:",
-            source["title"]
-        )
-
-        print(
-            "Year:",
-            source["year"]
-        )
-
-        print(
-            "Section:",
-            source["section"]
-        )
-
-        print(
-            "Relevance:",
-            source["relevance_score"]
-        )
-
-        print(
-            "Evidence:",
-            source["text"][:500]
-        )
-
-    print(
-        f"\n{'-' * 60}"
-    )
-
-
-# --------------------------------------------------
-# Main
-# --------------------------------------------------
-
 if __name__ == "__main__":
 
-    # Research question
     query = (
-        "How can generative AI "
-        "support learning and education?"
+        "How can generative AI support "
+        "learning and education?"
     )
 
-    # ----------------------------------------------
-    # Step 1: Retrieve relevant chunks
-    # ----------------------------------------------
-
+    # Normal evidence search.
+    #
+    # Multiple chunks from the same paper
+    # are allowed.
     results = search_papers(
         query,
-        top_k=3
+        top_k=5
     )
-
-    # ----------------------------------------------
-    # Step 2: Display raw search results
-    # ----------------------------------------------
 
     display_results(
         results
     )
 
-    # ----------------------------------------------
-    # Step 3: Build structured research context
-    # ----------------------------------------------
-
     research_context = build_research_context(
+        query,
         results
     )
-
-    # ----------------------------------------------
-    # Step 4: Display research context
-    # ----------------------------------------------
 
     display_research_context(
         research_context
