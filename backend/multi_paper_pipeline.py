@@ -7,11 +7,11 @@ from pdf_downloader import download_pdf
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-METADATA_FILE = (
+ACCESSIBLE_PAPERS_FILE = (
     BASE_DIR
     / "data"
     / "papers"
-    / "cleaned_papers.json"
+    / "accessible_papers.json"
 )
 
 PDF_DIRECTORY = (
@@ -22,82 +22,109 @@ PDF_DIRECTORY = (
 )
 
 
-def load_papers():
-    with open(METADATA_FILE, "r", encoding="utf-8") as file:
+def load_accessible_papers():
+
+    with open(
+        ACCESSIBLE_PAPERS_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
         return json.load(file)
 
 
-def get_available_papers(papers):
-    """
-    Select papers that have:
-    1. Open-access status
-    2. A direct PDF URL
-    """
+def create_pdf_filename(paper):
 
-    available = []
+    paper_id = paper.get(
+        "openalex_id",
+        "unknown_paper"
+    )
 
-    for paper in papers:
+    # Convert the OpenAlex URL into a safe filename.
+    safe_id = (
+        paper_id
+        .replace("https://", "")
+        .replace("http://", "")
+        .replace("/", "_")
+        .replace(":", "_")
+    )
 
-        pdf_url = paper.get("pdf_url")
-        is_oa = paper.get("is_oa")
-
-        if is_oa and pdf_url:
-            available.append(paper)
-
-    return available
+    return f"{safe_id}.pdf"
 
 
-def download_available_papers(papers):
+def download_accessible_papers(papers):
 
     downloaded_papers = []
 
-    for index, paper in enumerate(papers, start=1):
+    PDF_DIRECTORY.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    print("\n========================================")
+    print("          DOWNLOADING PAPERS")
+    print("========================================")
+
+    for index, paper in enumerate(
+        papers,
+        start=1
+    ):
 
         title = paper.get(
             "title",
-            "unknown_paper"
+            "Unknown paper"
         )
 
-        pdf_url = paper.get("pdf_url")
+        pdf_url = paper.get(
+            "pdf_url"
+        )
 
         print("\n----------------------------------------")
-        print(f"Paper {index}: {title}")
+
+        print(
+            f"Paper {index}: {title}"
+        )
 
         if not pdf_url:
-            print("No PDF URL. Skipping.")
-            continue
 
-        paper_id = paper.get("openalex_id")
+            print(
+                "No PDF URL. Skipping."
+            )
 
-        if not paper_id:
-            print("No OpenAlex ID. Skipping.")
             continue
 
         output_path = (
             PDF_DIRECTORY
-            / f"{paper_id.replace('/', '_')}.pdf"
+            / create_pdf_filename(paper)
         )
 
-        # -------------------------------------
-        # Check whether PDF already exists
-        # -------------------------------------
+        print(
+            "PDF URL:",
+            pdf_url
+        )
+
+        print(
+            "Output:",
+            output_path
+        )
+
+        # Don't download again if the PDF already exists.
         if output_path.exists():
 
-            print("PDF already exists.")
+            print(
+                "PDF already exists."
+            )
 
-            downloaded_papers.append({
-                "paper": paper,
-                "pdf_path": output_path
-            })
+            downloaded_papers.append(
+                {
+                    "paper": paper,
+                    "pdf_path": output_path
+                }
+            )
 
             continue
 
-        # -------------------------------------
-        # Download PDF
-        # -------------------------------------
         try:
-
-            print("Downloading PDF...")
 
             download_pdf(
                 pdf_url,
@@ -105,14 +132,15 @@ def download_available_papers(papers):
             )
 
             print(
-                "Downloaded:",
-                output_path
+                "Download successful."
             )
 
-            downloaded_papers.append({
-                "paper": paper,
-                "pdf_path": output_path
-            })
+            downloaded_papers.append(
+                {
+                    "paper": paper,
+                    "pdf_path": output_path
+                }
+            )
 
         except Exception as error:
 
@@ -124,29 +152,15 @@ def download_available_papers(papers):
     return downloaded_papers
 
 
-def process_downloaded_papers(downloaded_papers):
-
-    """
-    Process every successfully downloaded paper.
-
-    Each paper goes through:
-
-    PDF
-    ↓
-    Text extraction
-    ↓
-    Cleaning
-    ↓
-    Section parsing
-    ↓
-    Chunking
-    ↓
-    Embeddings
-    ↓
-    Qdrant
-    """
+def process_downloaded_papers(
+    downloaded_papers
+):
 
     processed_papers = []
+
+    print("\n========================================")
+    print("          PROCESSING PAPERS")
+    print("========================================")
 
     for index, item in enumerate(
         downloaded_papers,
@@ -157,11 +171,30 @@ def process_downloaded_papers(downloaded_papers):
         pdf_path = item["pdf_path"]
 
         print("\n========================================")
-        print(f"PROCESSING PAPER {index}")
+        print(
+            f"PROCESSING PAPER {index}"
+        )
         print("========================================")
 
-        print("Title:", paper.get("title"))
-        print("PDF:", pdf_path)
+        print(
+            "Title:",
+            paper.get("title")
+        )
+
+        print(
+            "Year:",
+            paper.get("year")
+        )
+
+        print(
+            "DOI:",
+            paper.get("doi")
+        )
+
+        print(
+            "PDF:",
+            pdf_path
+        )
 
         try:
 
@@ -170,13 +203,20 @@ def process_downloaded_papers(downloaded_papers):
                 paper
             )
 
-            processed_papers.append(result)
+            processed_papers.append(
+                result
+            )
 
-            print("\nPaper processed successfully.")
+            print(
+                "\nPaper processed successfully."
+            )
 
         except Exception as error:
 
-            print("\nPaper processing failed:")
+            print(
+                "\nPaper processing failed:"
+            )
+
             print(error)
 
     return processed_papers
@@ -188,66 +228,45 @@ def main():
     print("       MULTI-PAPER INGESTION")
     print("========================================")
 
-    # -------------------------------------
-    # 1. Load metadata
-    # -------------------------------------
-    papers = load_papers()
+    papers = load_accessible_papers()
 
     print(
-        "\nTotal papers in metadata:",
+        "\nAccessible papers:",
         len(papers)
     )
 
-    # -------------------------------------
-    # 2. Find papers with direct PDF URLs
-    # -------------------------------------
-    available_papers = get_available_papers(
-        papers
-    )
-
-    print(
-        "Papers with accessible PDF:",
-        len(available_papers)
-    )
-
-    print("\nAvailable papers:")
-
     for index, paper in enumerate(
-        available_papers,
+        papers,
         start=1
     ):
 
         print(
-            f"{index}. "
-            f"{paper.get('title')}"
+            f"{index}. {paper.get('title')}"
         )
 
-    # -------------------------------------
-    # 3. Download PDFs
-    # -------------------------------------
-    downloaded_papers = download_available_papers(
-        available_papers
+    downloaded_papers = (
+        download_accessible_papers(
+            papers
+        )
     )
 
     print("\n========================================")
-    print(
-        "Downloaded papers:",
-        len(downloaded_papers)
-    )
+    print("         DOWNLOAD SUMMARY")
     print("========================================")
 
-    # -------------------------------------
-    # 4. Process downloaded PDFs
-    # -------------------------------------
-    processed_papers = process_downloaded_papers(
-        downloaded_papers
+    print(
+        "Papers successfully downloaded:",
+        len(downloaded_papers)
     )
 
-    # -------------------------------------
-    # 5. Final summary
-    # -------------------------------------
+    processed_papers = (
+        process_downloaded_papers(
+            downloaded_papers
+        )
+    )
+
     print("\n========================================")
-    print("       INGESTION SUMMARY")
+    print("        INGESTION SUMMARY")
     print("========================================")
 
     print(
@@ -255,8 +274,14 @@ def main():
         len(processed_papers)
     )
 
+    print(
+        "Qdrant collection:",
+        "research_papers"
+    )
+
     print("========================================")
 
 
 if __name__ == "__main__":
+
     main()

@@ -132,6 +132,7 @@ def gap_agent(question, top_k=5):
         "IMPLICATIONS",
         "RESULTS"
     ]
+    
 )
     research_context = build_research_context(
         question,

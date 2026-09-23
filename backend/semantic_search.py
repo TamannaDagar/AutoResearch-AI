@@ -435,9 +435,10 @@ if __name__ == "__main__":
     # Multiple chunks from the same paper
     # are allowed.
     results = search_papers(
-        query,
-        top_k=5
-    )
+    query,
+    top_k=5,
+    one_result_per_paper=True
+)
 
     display_results(
         results
