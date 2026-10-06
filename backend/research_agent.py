@@ -122,7 +122,8 @@ Do not introduce outside information.
 
 def research_agent(
     question,
-    top_k=5
+    top_k=5,
+    paper_ids=None
 ):
 
     # -------------------------------------
@@ -131,7 +132,9 @@ def research_agent(
 
     results = search_papers(
         question,
-        top_k=top_k
+        top_k=top_k,
+        one_result_per_paper=True,
+        paper_ids=paper_ids
     )
 
     # -------------------------------------
@@ -188,13 +191,27 @@ def research_agent(
 if __name__ == "__main__":
 
     question = (
-        "How can generative AI support "
-        "learning and education?"
+        "What benefits and challenges of generative AI "
+        "in higher education are reported by students "
+        "and researchers?"
     )
+
+    # -----------------------------------------
+    # Current research-run paper IDs
+    # -----------------------------------------
+
+    current_paper_ids = [
+        "https://openalex.org/W4384464487",
+        "https://openalex.org/W4411842024",
+        "https://openalex.org/W4379046986",
+        "https://openalex.org/W4404509460",
+        "https://openalex.org/W4406199489",
+    ]
 
     result = research_agent(
         question,
-        top_k=3
+        top_k=3,
+        paper_ids=current_paper_ids
     )
 
     print(

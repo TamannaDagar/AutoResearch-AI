@@ -131,8 +131,8 @@ def gap_agent(question, top_k=5):
         "FUTURE WORK",
         "IMPLICATIONS",
         "RESULTS"
-    ]
-    
+    ],
+    one_result_per_paper=True
 )
     research_context = build_research_context(
         question,
@@ -160,8 +160,7 @@ def gap_agent(question, top_k=5):
 if __name__ == "__main__":
 
     question = """
-    What research gaps and future research directions
-    are identified regarding generative AI in education?
+    What research gaps and future research directions are identified across the available papers on generative AI in education?
     """
 
     result = gap_agent(

@@ -1,3 +1,4 @@
+
 from pathlib import Path
 import json
 import re
@@ -37,92 +38,119 @@ METADATA_FILE = (
 # Known academic section headings
 # --------------------------------------------------
 
-SECTION_HEADINGS = {
-    "ABSTRACT",
-    "INTRODUCTION",
-    "BACKGROUND",
-    "RELATED WORK",
-    "LITERATURE REVIEW",
-    "METHODOLOGY",
-    "METHODOLOGICAL APPROACH",
-    "METHOD",
-    "METHODS",
-    "MATERIALS AND METHODS",
-    "RESULTS",
-    "FINDINGS",
-    "DISCUSSION",
-    "DISCUSSION AND IMPLICATIONS",
-    "CONCLUSION",
-    "CONCLUSIONS",
-    "LIMITATIONS",
-    "FUTURE WORK",
-    "IMPLICATIONS",
-    "THEORETICAL IMPLICATIONS",
-    "PRACTICAL IMPLICATIONS",
-    "RECOMMENDATIONS",
-    "ACKNOWLEDGEMENTS",
-    "ACKNOWLEDGMENTS",
+# Map heading variants to consistent section names.
+HEADING_ALIASES = {
+    "ABSTRACT": "Abstract",
+    "INTRODUCTION": "Introduction",
+    "BACKGROUND": "Background",
+    "RELATED WORK": "Related Work",
+    "LITERATURE REVIEW": "Literature Review",
+    "METHODOLOGY": "Methodology",
+    "METHODOLOGICAL APPROACH": "Methodology",
+    "METHOD": "Methods",
+    "METHODS": "Methods",
+    "MATERIALS AND METHODS": "Methods",
+    "RESEARCH DESIGN": "Methods",
+    "DATA AND METHODS": "Methods",
+    "RESULT": "Results",
+    "RESULTS": "Results",
+    "FINDINGS": "Findings",
+    "DISCUSSION": "Discussion",
+    "DISCUSSION AND IMPLICATIONS": "Discussion",
+    "CONCLUSION": "Conclusion",
+    "CONCLUSIONS": "Conclusion",
+    "CONCLUDING REMARKS": "Conclusion",
+    "LIMITATION": "Limitations",
+    "LIMITATIONS": "Limitations",
+    "FUTURE WORK": "Future Work",
+    "FUTURE DIRECTIONS": "Future Work",
+    "IMPLICATIONS": "Implications",
+    "THEORETICAL IMPLICATIONS": "Implications",
+    "PRACTICAL IMPLICATIONS": "Implications",
+    "RECOMMENDATIONS": "Recommendations",
+    "ACKNOWLEDGEMENTS": "Acknowledgements",
+    "ACKNOWLEDGMENTS": "Acknowledgements",
+    "REFERENCES": "References",
+    "BIBLIOGRAPHY": "References",
+    "WORKS CITED": "References",
+}
+
+
+REFERENCE_HEADINGS = {
     "REFERENCES",
+    "BIBLIOGRAPHY",
+    "WORKS CITED",
 }
 
 
 # --------------------------------------------------
-# Section heading detection
+# Heading normalization
 # --------------------------------------------------
 
-def is_section_heading(line):
+def clean_heading_text(line):
+    """
+    Normalize a possible heading by removing numbering
+    and unnecessary whitespace.
 
+    Examples:
+    1 Introduction -> INTRODUCTION
+    2.1 Methodology -> METHODOLOGY
+    III. Results -> RESULTS
+    """
     normalized = " ".join(line.strip().split())
 
-    if not normalized:
-        return False
-
-    upper_line = normalized.upper()
-
-    # Known academic heading
-    if upper_line in SECTION_HEADINGS:
-        return True
-
-    # Numbered heading
-    # Example: 1 Introduction
-    # Example: 2.1 Methodology
-    numbered_heading = re.match(
-        r"^\d+(?:\.\d+)*\.?\s+[A-Za-z][A-Za-z\s&:-]{1,80}$",
+    # Remove Arabic section numbers.
+    normalized = re.sub(
+        r"^\d+(?:\.\d+)*\.?\s*",
+        "",
         normalized
     )
 
-    if numbered_heading:
-        return True
-
-    # Roman numeral heading
-    # Example: I. Introduction
-    roman_heading = re.match(
-        r"^[IVXLC]+\.?\s+[A-Za-z][A-Za-z\s&:-]{1,80}$",
+    # Remove Roman numeral prefixes.
+    normalized = re.sub(
+        r"^[IVXLC]+\.?\s+",
+        "",
         normalized,
-        re.IGNORECASE
+        flags=re.IGNORECASE
     )
 
-    if roman_heading:
-        return True
+    # Remove trailing punctuation.
+    normalized = normalized.strip(" .:-")
 
-    # Short uppercase heading
-    if (
-        normalized.isupper()
-        and len(normalized.split()) <= 12
-        and len(normalized) <= 100
-    ):
-        return True
+    return normalized.upper()
 
-    return False
+
+def get_section_name(line):
+    """
+    Return a canonical section name if the line is a
+    recognized heading. Otherwise return None.
+    """
+    normalized = clean_heading_text(line)
+
+    if normalized in HEADING_ALIASES:
+        return HEADING_ALIASES[normalized]
+
+    return None
+
+
+def is_section_heading(line):
+    """
+    Check whether a line is a recognized academic heading.
+    """
+    return get_section_name(line) is not None
 
 
 # --------------------------------------------------
-# Normalize section name
+# Reference detection
 # --------------------------------------------------
 
-def normalize_section_name(line):
-
-    return " ".join(line.strip().split())
+def is_reference_heading(line):
+    """
+    Identify bibliography headings so references are
+    never included as research-content chunks.
+    """
+    normalized = clean_heading_text(line)
+    return normalized in REFERENCE_HEADINGS
 
 
 # --------------------------------------------------
@@ -130,65 +158,87 @@ def normalize_section_name(line):
 # --------------------------------------------------
 
 def parse_sections(cleaned_text):
+    """
+    Split cleaned paper text into recognized sections.
 
+    Text before the first recognized heading is ignored
+    to avoid title-page and front-matter chunks.
+
+    References and bibliography sections are excluded.
+    """
     sections = []
-
-    current_section = "Unknown"
+    current_section = None
     current_text = []
+    references_found = False
+
+    def save_current_section():
+        """
+        Save the current section if it contains text.
+        """
+        nonlocal current_text, current_section
+
+        section_text = " ".join(current_text).strip()
+
+        if current_section and section_text:
+            sections.append({
+                "section": current_section,
+                "text": section_text
+            })
+
+        current_text = []
 
     for line in cleaned_text.splitlines():
-
         line = line.strip()
 
         if not line:
             continue
 
-        # ------------------------------------------
-        # Section heading found
-        # ------------------------------------------
+        # Stop processing when references begin.
+        if is_reference_heading(line):
+            save_current_section()
+            references_found = True
+            print("References section detected. Stopping section parsing.")
+            break
 
-        if is_section_heading(line):
+        # Recognized academic heading.
+        section_name = get_section_name(line)
 
-            # Save previous section
-            if current_text:
+        if section_name:
+            save_current_section()
+            current_section = section_name
+            continue
 
-                section_text = " ".join(
-                    current_text
-                ).strip()
+        # Ignore text before the first recognized heading.
+        if current_section is None:
+            continue
 
-                if section_text:
+        current_text.append(line)
 
-                    sections.append({
-                        "section": current_section,
-                        "text": section_text
-                    })
+    # Save the final section if references were not reached.
+    if not references_found:
+        save_current_section()
 
-            # Start new section
-            current_section = normalize_section_name(
-                line
-            )
+    # If no recognized headings were found, retain the
+    # document body under a neutral section name.
+    if not sections:
+        body_lines = []
+        for line in cleaned_text.splitlines():
+            line = line.strip()
 
-            current_text = []
+            if not line:
+                continue
 
-        else:
+            if is_reference_heading(line):
+                break
 
-            current_text.append(line)
+            body_lines.append(line)
 
-    # ------------------------------------------
-    # Save final section
-    # ------------------------------------------
+        body_text = " ".join(body_lines).strip()
 
-    if current_text:
-
-        section_text = " ".join(
-            current_text
-        ).strip()
-
-        if section_text:
-
+        if body_text:
             sections.append({
-                "section": current_section,
-                "text": section_text
+                "section": "Content",
+                "text": body_text
             })
 
     return sections
@@ -199,7 +249,9 @@ def parse_sections(cleaned_text):
 # --------------------------------------------------
 
 def split_into_sections(text):
-
+    """
+    Backward-compatible alias for parse_sections().
+    """
     return parse_sections(text)
 
 
@@ -213,33 +265,41 @@ def create_chunks(
     max_words=400,
     overlap_words=80
 ):
+    """
+    Split each section into overlapping word chunks.
+
+    Each chunk preserves paper metadata and its section.
+    """
+    if max_words <= 0:
+        raise ValueError("max_words must be greater than zero.")
+
+    if overlap_words < 0:
+        raise ValueError("overlap_words cannot be negative.")
+
+    if overlap_words >= max_words:
+        raise ValueError(
+            "overlap_words must be smaller than max_words."
+        )
 
     chunks = []
 
     for section_data in sections:
-
         section_name = section_data["section"]
         section_text = section_data["text"]
-
         words = section_text.split()
 
         start = 0
 
         while start < len(words):
-
             end = min(
                 start + max_words,
                 len(words)
             )
 
             chunk_words = words[start:end]
-
-            chunk_text = " ".join(
-                chunk_words
-            )
+            chunk_text = " ".join(chunk_words)
 
             chunks.append({
-
                 # Paper metadata
                 "paper_id": paper_metadata["openalex_id"],
                 "title": paper_metadata["title"],
@@ -252,15 +312,15 @@ def create_chunks(
                 "section": section_name,
                 "word_count": len(chunk_words),
 
-                # Chunk text
+                # Chunk content
                 "text": chunk_text
             })
 
-            # Final chunk
+            # Stop after the final chunk.
             if end >= len(words):
                 break
 
-            # Maintain overlap
+            # Move forward while retaining overlap.
             start = end - overlap_words
 
     return chunks
@@ -271,7 +331,9 @@ def create_chunks(
 # --------------------------------------------------
 
 def save_chunks(chunks, output_file):
-
+    """
+    Save chunks to a JSON file.
+    """
     output_file.parent.mkdir(
         parents=True,
         exist_ok=True
@@ -282,7 +344,6 @@ def save_chunks(chunks, output_file):
         "w",
         encoding="utf-8"
     ) as file:
-
         json.dump(
             chunks,
             file,
@@ -290,9 +351,7 @@ def save_chunks(chunks, output_file):
             ensure_ascii=False
         )
 
-    print(
-        f"Chunks saved to: {output_file}"
-    )
+    print(f"Chunks saved to: {output_file}")
 
 
 # --------------------------------------------------
@@ -301,70 +360,61 @@ def save_chunks(chunks, output_file):
 
 if __name__ == "__main__":
 
+    # Load paper metadata.
     with open(
         METADATA_FILE,
         "r",
         encoding="utf-8"
     ) as file:
-
         papers = json.load(file)
 
+    target_title = (
+        "Towards social generative AI for education: "
+        "theory, practices and ethics"
+    )
+
     paper_metadata = next(
-        paper
-        for paper in papers
-        if paper["title"]
-        == "Towards social generative AI for education: theory, practices and ethics"
+        (
+            paper
+            for paper in papers
+            if paper["title"] == target_title
+        ),
+        None
     )
 
-    print(
-        "\nPaper:",
-        paper_metadata["title"]
-    )
+    if paper_metadata is None:
+        raise ValueError(
+            f"Paper not found in metadata: {target_title}"
+        )
 
-    print(
-        "Year:",
-        paper_metadata["year"]
-    )
+    print("\nPaper:", paper_metadata["title"])
+    print("Year:", paper_metadata["year"])
+    print("DOI:", paper_metadata["doi"])
+    print("OpenAlex ID:", paper_metadata["openalex_id"])
 
-    print(
-        "DOI:",
-        paper_metadata["doi"]
-    )
-
-    print(
-        "OpenAlex ID:",
-        paper_metadata["openalex_id"]
-    )
-
+    # Read cleaned text.
     with open(
         INPUT_FILE,
         "r",
         encoding="utf-8"
     ) as file:
-
         text = file.read()
 
-    print(
-        "\nTotal words:",
-        len(text.split())
-    )
+    print("\nTotal words:", len(text.split()))
 
+    # Parse sections.
     sections = parse_sections(text)
 
-    print(
-        "Sections found:",
-        len(sections)
-    )
-
+    print("\nSections found:", len(sections))
     print("\nDetected sections:")
 
     for section in sections:
-
         print(
             f"- {section['section']}: "
             f"{len(section['text'].split())} words"
         )
 
+    # Create chunks.
     chunks = create_chunks(
         sections,
         paper_metadata,
@@ -372,12 +422,19 @@ if __name__ == "__main__":
         overlap_words=80
     )
 
-    print(
-        "\nChunks created:",
-        len(chunks)
-    )
+    print("\nChunks created:", len(chunks))
 
+    # Save chunks.
     save_chunks(
         chunks,
         OUTPUT_FILE
     )
+
+    print("\n===== CHUNK PREVIEW =====")
+
+    for chunk in chunks[:3]:
+        print("\nSection:", chunk["section"])
+        print("Word count:", chunk["word_count"])
+        print("Text:", chunk["text"][:500])
+
+    print("\n===== END PREVIEW =====")

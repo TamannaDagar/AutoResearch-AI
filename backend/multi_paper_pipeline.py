@@ -230,10 +230,24 @@ def main():
 
     papers = load_accessible_papers()
 
+    # Paper IDs belonging to the current research run.
+    current_paper_ids = [
+        paper["openalex_id"]
+        for paper in papers
+    ]
+
     print(
         "\nAccessible papers:",
         len(papers)
     )
+
+    print("\nCurrent paper IDs:")
+
+    for paper_id in current_paper_ids:
+
+        print(
+            paper_id
+        )
 
     for index, paper in enumerate(
         papers,

@@ -112,7 +112,19 @@ def compare_agent(question, top_k=5):
 
     results = search_papers(
         question,
-        top_k=top_k
+        top_k=top_k,
+        allowed_sections=[
+        "ABSTRACT",
+        "INTRODUCTION",
+        "METHODOLOGY",
+        "METHODS",
+        "RESULTS",
+        "FINDINGS",
+        "DISCUSSION",
+        "CONCLUSION",
+        "LIMITATIONS",
+    ],
+        one_result_per_paper=True
     )
 
     research_context = build_research_context(

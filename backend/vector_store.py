@@ -1,30 +1,36 @@
+
 import json
 import uuid
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+)
 from sentence_transformers import SentenceTransformer
 
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 COLLECTION_NAME = "research_papers"
 QDRANT_URL = "http://localhost:6333"
+EXPECTED_VECTOR_SIZE = 384
 
 
 def get_qdrant_client():
-    """
-    Create a connection to the Qdrant Docker server.
-    """
+    """Connect to the Qdrant server."""
     return QdrantClient(url=QDRANT_URL)
 
 
 def reset_vector_store():
     """
-    Delete the existing research collection.
+    Delete the entire research collection.
 
-    This is useful when starting a fresh research corpus.
+    Use only when intentionally starting a fresh corpus.
     """
-
     client = get_qdrant_client()
 
     if client.collection_exists(COLLECTION_NAME):
@@ -37,53 +43,95 @@ def reset_vector_store():
 
 
 def load_chunks(input_file):
-    """
-    Load chunk data from a JSON file.
-    """
-
+    """Load chunk data from a JSON file."""
     with open(input_file, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
-def create_vector_store(chunks, embeddings):
-    """
-    Store chunk embeddings and metadata in Qdrant.
-    """
-
-    client = get_qdrant_client()
-
-    vector_size = len(embeddings[0])
-
-    # -------------------------------------
-    # Create collection if it doesn't exist
-    # -------------------------------------
+def ensure_collection(client, vector_size):
+    """Create the collection or validate its vector configuration."""
     if not client.collection_exists(COLLECTION_NAME):
-
         client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
                 size=vector_size,
-                distance=Distance.COSINE
-            )
+                distance=Distance.COSINE,
+            ),
+        )
+        print("Qdrant collection created.")
+        return
+
+    info = client.get_collection(COLLECTION_NAME)
+    existing_config = info.config.params.vectors
+
+    # This project uses a single unnamed vector per point.
+    if existing_config.size != vector_size:
+        raise ValueError(
+            f"Collection vector size is {existing_config.size}, "
+            f"but incoming embeddings have size {vector_size}. "
+            "Reset or migrate the collection before inserting."
         )
 
-        print("Qdrant collection created.")
 
-    # -------------------------------------
-    # Prepare points
-    # -------------------------------------
+def delete_paper_vectors(client, paper_id):
+    """Delete all stored chunks belonging to one paper."""
+    client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter(
+            must=[
+                FieldCondition(
+                    key="paper_id",
+                    match=MatchValue(value=paper_id),
+                )
+            ]
+        ),
+        wait=True,
+    )
+    print(f"Deleted existing vectors for paper: {paper_id}")
+
+
+def create_vector_store(chunks, embeddings, replace_paper=False):
+    """
+    Store embeddings and chunk metadata in Qdrant.
+
+    replace_paper=True removes existing vectors for each paper
+    represented in the incoming chunks before inserting new ones.
+    """
+    if not chunks:
+        raise ValueError("No chunks provided.")
+
+    if len(chunks) != len(embeddings):
+        raise ValueError(
+            f"Chunk count ({len(chunks)}) does not match "
+            f"embedding count ({len(embeddings)})."
+        )
+
+    vector_size = len(embeddings[0])
+
+    if vector_size != EXPECTED_VECTOR_SIZE:
+        raise ValueError(
+            f"Expected {EXPECTED_VECTOR_SIZE}-dimensional embeddings, "
+            f"received {vector_size}."
+        )
+
+    if any(len(vector) != vector_size for vector in embeddings):
+        raise ValueError("Embedding dimensions are inconsistent.")
+
+    client = get_qdrant_client()
+    ensure_collection(client, vector_size)
+
+    if replace_paper:
+        paper_ids = {chunk["paper_id"] for chunk in chunks}
+        for paper_id in paper_ids:
+            delete_paper_vectors(client, paper_id)
+
     points = []
 
     for chunk, embedding in zip(chunks, embeddings):
-
-        # Deterministic unique ID
-        #
-        # Same paper + same chunk
-        # always produces the same UUID.
         point_id = str(
             uuid.uuid5(
                 uuid.NAMESPACE_DNS,
-                f"{chunk['paper_id']}_{chunk['chunk_id']}"
+                f"{chunk['paper_id']}_{chunk['chunk_id']}",
             )
         )
 
@@ -99,42 +147,29 @@ def create_vector_store(chunks, embeddings):
                     "chunk_id": chunk["chunk_id"],
                     "section": chunk["section"],
                     "word_count": chunk["word_count"],
-                    "text": chunk["text"]
-                }
+                    "text": chunk["text"],
+                },
             )
         )
 
-    # -------------------------------------
-    # Store vectors
-    # -------------------------------------
     client.upsert(
         collection_name=COLLECTION_NAME,
-        points=points
+        points=points,
+        wait=True,
     )
 
-    print("Vectors stored successfully!")
+    print(f"Stored {len(points)} vectors successfully!")
 
-    # -------------------------------------
-    # Show collection information
-    # -------------------------------------
-    collection_info = client.get_collection(
-        collection_name=COLLECTION_NAME
-    )
-
-    print(
-        "Vectors in collection:",
-        collection_info.points_count
-    )
+    collection_info = client.get_collection(COLLECTION_NAME)
+    print("Vectors in collection:", collection_info.points_count)
 
     return client
 
 
 if __name__ == "__main__":
-
     print("\n========================================")
     print("        QDRANT COLLECTION RESET")
     print("========================================")
 
     reset_vector_store()
-
-    print("\nQdrant is now ready for fresh ingestion.")
+    print("\nQdrant is ready for fresh ingestion.")
